@@ -1,14 +1,25 @@
 import pandas as pd
+import collections
+from zipfile import ZipFile
 import warnings
 warnings.filterwarnings("ignore")
 
-# Change the file location before running code.
+# Change the file location before running the code below.
 data_2018 = "C:/Users/Prin/Desktop/dissertation/Datashare/juno_2018.csv"
 data_2019 = "C:/Users/Prin/Desktop/dissertation/Datashare/juno_2019.csv"
 
+# Change the file location before running the code below.
+weather2018_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/weather2.zip"
+weather2019_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/weather_2019(2).zip"
+daily_weather_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/daily_weather.zip"
+
+print('Loading data...')
+print('')
 df_2018 = pd.read_csv(data_2018, encoding='latin1')
 df_2019 = pd.read_csv(data_2019)
 
+print('Cleaning data...')
+print('')
 # Drop the error rows
 df_2018 = df_2018.drop(df_2018.index[1112133:1112150])
 
@@ -42,6 +53,8 @@ df['OUT'] = out
 Relabeling "Category1"
 '''
 
+print('Relabeling Category1...')
+print('')
 # Relabel 'Postgraduate'
 df = df.replace({'Category1': {'Postgraduate Taught': 'Postgraduate', 'Postgraduate Research': 'Postgraduate',
                                'PG': 'Postgraduate'}})
@@ -215,9 +228,11 @@ df['BN'] = BN
 df['Other'] = other
 
 '''
-Relabeling School of user (Category)
+Relabeling School of user (Category3)
 '''
 
+print('Relabeling School(Category3)...')
+print('')
 # Relabel 'School of Business and Management'
 df = df.replace({'Category3': {'School of Business, Management': 'School of Business and Management',
                                'School of Business, Managemen': 'School of Business and Management',
@@ -321,6 +336,9 @@ df_in.loc[df_in['Category3'].isna(), ['other_school']] = 1
 Store the every day raw data from 2018 to 2019 in "corpus",
 and "sch_corpus" for school dataframe
 '''
+
+print('Generating corpus...')
+print('')
 # Extract date from 2018 and 2019
 days = []
 for i in df['Date'].unique():
@@ -332,6 +350,8 @@ for day in days:
     data = df[df['Date'] == day]
     corpus[day] = data
 
+print('Generating sch_copus...')
+print('')
 # Generate sch_corpus
 sch_corpus = {}
 for day in days:
@@ -341,7 +361,6 @@ for day in days:
 '''
 Making the term date adding function
 '''
-
 
 def extract_period(s, u, month, year):
     alist = []
@@ -476,7 +495,6 @@ def add_term(df):
 Generating Hourly dataframe
 '''
 
-
 def difference(list1):
     time_frame = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13',
                   '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']
@@ -557,5 +575,211 @@ sch_hourly_data = pd.concat(sch_hourly_corpus, ignore_index=True)
 print('Adding term dates to hourly+school dataframe...')
 sch_hourly_data = add_term(sch_hourly_data)
 print('Exporting hourly+school dataframe...')
+print('Done!')
+print('')
+
+'''
+Generating Daily dataframe
+'''
+print('Generating daily dataframe...')
+daily_data = df.groupby('Date')['IN', 'OUT', 'Postgraduate', 'Undergraduate', 'Assistive-Tech', 'Library-Staff',
+                                'Staff', 'Sconul', 'Default', 'BN', 'Other'].sum()
+
+print('Adding term dates to daily dataframe...')
+daily_data = daily_data.reset_index()
+daily_data = add_term(daily_data)
+print('Exporting daily dataframe...')
+print('Done!')
+print('')
+
+print('Generating sch_daily dataframe...')
+sch_daily_data = sch_hourly_data.groupby('Date')[sch_col].sum()
+print('Adding term dates to sch_daily dataframe...')
+sch_daily_data = sch_daily_data.reset_index()
+sch_daily_data = add_term(sch_daily_data)
+print('Exporting daily dataframe...')
+print('Done!')
+print('')
+
+'''
+Applying weather condition data to generate weather dataframe.
+'''
+
+# This function use to round the time to hourly scale
+def remove50(df):
+    df['minutes'] = df.Time.str.split(":", expand=True)[1]
+    df = df[df.minutes != '50 AM']
+    df = df[df.minutes != '50 PM']
+    df = df.drop(columns='minutes')
+    return df
+
+# This function use to convert the time to 24 hour unit
+def convert_time(df):
+    result = []
+    for time in df.Time:
+        hour, mins = time.split(':')
+
+        if len(hour) == 1:
+            hour = '0' + hour
+
+        if mins[-2:] == 'AM' and hour == '12':
+            hour = '00'
+            result.append(hour + ':' + mins[:2])
+
+        elif mins[-2:] == 'AM':
+            result.append(hour + ':' + mins[:2])
+
+        elif mins[-2:] == 'PM' and hour == '12':
+            result.append(hour + ':' + mins[:2])
+
+        else:
+            hour = str(int(hour) + 12)
+            result.append(hour + ':' + mins[:2])
+
+    df.Time = result
+    return df
+
+# This function use to convert temperature from F to C
+def convert_temp(df):
+    new_tem = []
+    new_d_point = []
+
+    for tem, d_point in zip(df['Temperature(F)'], df['Dew_point(F)']):
+        new_tem.append(round((tem - 32) * 5 / 9))
+        new_d_point.append(round((d_point - 32) * 5 / 9))
+
+    df['Temperature(F)'] = new_tem
+    df['Dew_point(F)'] = new_d_point
+    df = df.rename(columns={'Temperature(F)': 'Temperature(C)', 'Dew_point(F)': 'Dew_point(C)',
+                            'Wind_Guest(mph)': 'Wind_Gust(mph)'})
+    return df
+
+# Import and transform weather condition data
+def weather_zip_to_corpus(filezip):
+    # retrieve file name in archive
+    with ZipFile(filezip, 'r') as myzip:
+        files_list = myzip.namelist()
+        files_list = files_list[1:]
+
+    # Create corpus (dict)
+    weather_corpus = {}
+    for file in files_list:
+
+        wet, year, month, day = file.split('-')
+        day, csv = day.split('.')
+        wet1, wet2 = wet.split('/')
+        if len(day) == 1:
+            day = '0' + day
+        if len(month) == 1:
+            month = '0' + month
+
+        date = year + '-' + month + '-' + day
+        # rename key for weather corpus base on file name
+        file_name = wet2 + '_' + year + '_' + month + '_' + day
+
+        weather_zip = ZipFile(filezip)
+        df_temp = pd.read_csv(weather_zip.open(file)).dropna()
+
+        df_temp = remove50(df_temp)
+        df_temp = convert_time(df_temp)
+        df_temp = convert_temp(df_temp)
+
+        # Add date of data to df
+        df_temp['Date'] = date
+
+        # Add Oclock column and fill Nan
+        df_temp['Oclock'] = df_temp.Time.str.split(":", expand=True)[0]
+        df_temp = fill_diference(df_temp, data='weather')
+
+        cols = df_temp.columns.tolist()
+        cols = cols[-2:] + cols[:-2]
+        df_temp = df_temp[cols]
+
+        weather_corpus[file_name] = df_temp
+    return weather_corpus
+
+print('Generating weather corpus...')
+weather2018_corpus = weather_zip_to_corpus(weather2018_zip)
+weather2019_corpus = weather_zip_to_corpus(weather2019_zip)
+
+weather2018_corpus = collections.OrderedDict(sorted(weather2018_corpus.items()))
+weather2019_corpus = collections.OrderedDict(sorted(weather2019_corpus.items()))
+allweather_corpus = {**weather2018_corpus, **weather2019_corpus}
+
+print('Generating weather dataframe...')
+allweather_data = pd.concat(allweather_corpus, ignore_index=True)
+print('')
+
+print('Merging hourly data with weather data...')
+wet_hour_df = pd.merge(hourly_data, allweather_data, on=['Date', 'Oclock'], how='outer')
+wet_hour_df = wet_hour_df.drop(7176)
+wet_hour_df = wet_hour_df.drop(15865)
+wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-01-01']
+wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-12-25']
+wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-12-26']
+wet_hour_df = wet_hour_df.reset_index().drop(columns='index')
+print('Exporting wet_hour_df...')
+print('Done!')
+print('')
+
+'''
+Generating weather daily data
+'''
+
+def daily_weather_zip_to_corpus(filezip):
+    # retrieve file name in archive
+    with ZipFile(filezip, 'r') as myzip:
+        files_list = myzip.namelist()
+        files_list = files_list[1:]
+
+    # Create corpus (dict)
+    weather_corpus = {}
+    for file in files_list:
+
+        file_name = str(file)[14:-4]
+
+        weather_zip = ZipFile(filezip)
+        df_temp = pd.read_csv(weather_zip.open(file)).dropna()
+
+        hi_tem = []
+        low_tem = []
+
+        for hi, low in zip(df_temp['temp_hi'], df_temp['temp_low']):
+            hi = int(hi[:2])
+            low = int(low[:2])
+            hi_tem.append(round((hi - 32) * 5 / 9))
+            low_tem.append(round((low - 32) * 5 / 9))
+
+        df_temp['temp_hi'] = hi_tem
+        df_temp['temp_low'] = low_tem
+
+        # Add month of data to df
+        df_temp['Month'] = file_name[14:]
+
+        cols = df_temp.columns.tolist()
+        cols = cols[-2:] + cols[:-2]
+        df_temp = df_temp[cols]
+
+        weather_corpus[file_name] = df_temp
+    return weather_corpus
+
+daily_weather_corpus = daily_weather_zip_to_corpus(daily_weather_zip)
+
+def con_day(day):
+    if len(str(day)) == 1:
+        return '0{}'.format(day)
+    else:
+        return str(day)
+
+print('Generating daily weather data...')
+daily_weather_data = pd.concat(daily_weather_corpus, ignore_index = True)
+daily_weather_data['day'] = [con_day(i) for i in daily_weather_data.Day]
+daily_weather_data['Date'] = daily_weather_data.Month.str.split('_', expand=True)[0]+'-'\
+                             + daily_weather_data.Month.str.split('_', expand=True)[1]+'-'+daily_weather_data.day
+daily = daily_data.copy()
+daily = daily.reset_index()
+print('Merging daily data with weather data...')
+daily_x_wet = pd.merge(daily, daily_weather_data, on=['Date'], how='outer')
+print('Exporting daily_x_wet...')
 print('Done!')
 print('')
