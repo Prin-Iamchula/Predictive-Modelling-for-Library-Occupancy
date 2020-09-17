@@ -4,6 +4,8 @@ from zipfile import ZipFile
 import warnings
 warnings.filterwarnings("ignore")
 
+print('Loading data...')
+print('')
 # Change the file location before running the code below.
 data_2018 = "C:/Users/Prin/Desktop/dissertation/Datashare/juno_2018.csv"
 data_2019 = "C:/Users/Prin/Desktop/dissertation/Datashare/juno_2019.csv"
@@ -13,8 +15,9 @@ weather2018_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/weather2.zip"
 weather2019_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/weather_2019(2).zip"
 daily_weather_zip = "C:/Users/Prin/Desktop/dissertation/Datashare/daily_weather.zip"
 
-print('Loading data...')
-print('')
+# Please change and specify the exported location here!!!!
+export_loc = 'C:/Users/Prin/Desktop/dissertation/Datashare'
+
 df_2018 = pd.read_csv(data_2018, encoding='latin1')
 df_2019 = pd.read_csv(data_2019)
 
@@ -502,7 +505,6 @@ def difference(list1):
     diff_time = [value for value in time_frame if value not in list1]
     return diff_time
 
-
 def fill_diference(dataframe, data='hourly'):
     alist = []
     for i in dataframe['Oclock']:
@@ -549,7 +551,8 @@ for day in days:
 hourly_data = pd.concat(hourly_corpus, ignore_index=True)
 print('Adding term dates to hourly dataframe...')
 hourly_data = add_term(hourly_data)
-print('Exporting hourly dataframe...')
+print('Exporting hourly_data.csv to {}...'.format(export_loc))
+hourly_data.to_csv(export_loc+'/hourly_data.csv')
 print('Done!')
 print('')
 
@@ -574,7 +577,8 @@ for day in days:
 sch_hourly_data = pd.concat(sch_hourly_corpus, ignore_index=True)
 print('Adding term dates to hourly+school dataframe...')
 sch_hourly_data = add_term(sch_hourly_data)
-print('Exporting hourly+school dataframe...')
+print('Exporting sch_hourly_data.csv to {}...'.format(export_loc))
+sch_hourly_data.to_csv(export_loc+'/sch_hourly_data.csv')
 print('Done!')
 print('')
 
@@ -588,7 +592,8 @@ daily_data = df.groupby('Date')['IN', 'OUT', 'Postgraduate', 'Undergraduate', 'A
 print('Adding term dates to daily dataframe...')
 daily_data = daily_data.reset_index()
 daily_data = add_term(daily_data)
-print('Exporting daily dataframe...')
+print('Exporting daily_data.csv to {}...'.format(export_loc))
+daily_data.to_csv(export_loc+'/daily_data.csv')
 print('Done!')
 print('')
 
@@ -597,7 +602,8 @@ sch_daily_data = sch_hourly_data.groupby('Date')[sch_col].sum()
 print('Adding term dates to sch_daily dataframe...')
 sch_daily_data = sch_daily_data.reset_index()
 sch_daily_data = add_term(sch_daily_data)
-print('Exporting daily dataframe...')
+print('Exporting sch_daily_data.csv to {}...'.format(export_loc))
+sch_daily_data.to_csv(export_loc+'/sch_daily_data.csv')
 print('Done!')
 print('')
 
@@ -718,7 +724,8 @@ wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-01-01']
 wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-12-25']
 wet_hour_df = wet_hour_df[wet_hour_df['Date'] != '2018-12-26']
 wet_hour_df = wet_hour_df.reset_index().drop(columns='index')
-print('Exporting wet_hour_df...')
+print('Exporting wet_hour_df.csv to {}...'.format(export_loc))
+wet_hour_df.to_csv(export_loc+'/wet_hour_df.csv')
 print('Done!')
 print('')
 
@@ -780,6 +787,7 @@ daily = daily_data.copy()
 daily = daily.reset_index()
 print('Merging daily data with weather data...')
 daily_x_wet = pd.merge(daily, daily_weather_data, on=['Date'], how='outer')
-print('Exporting daily_x_wet...')
+print('Exporting daily_x_wet.csv to {}...'.format(export_loc))
+daily_x_wet.to_csv(export_loc+'/daily_x_wet.csv')
 print('Done!')
 print('')
