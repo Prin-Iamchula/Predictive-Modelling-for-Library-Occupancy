@@ -551,6 +551,19 @@ for day in days:
 hourly_data = pd.concat(hourly_corpus, ignore_index=True)
 print('Adding term dates to hourly dataframe...')
 hourly_data = add_term(hourly_data)
+
+# Create Hourly index
+hour = []
+for h in hourly_data.Oclock:
+    h = str(h)
+    if len(h) == 1:
+        hour.append('0'+h)
+    else:
+        hour.append(h)
+
+hourly_data['Hour'] = hour
+hourly_data['Hour'] = hourly_data.Date+" "+hourly_data.Hour+':'+'00'+':'+'00'
+hourly_data = hourly_data.set_index('Hour')
 print('Exporting hourly_data.csv to {}...'.format(export_loc))
 hourly_data.to_csv(export_loc+'/hourly_data.csv')
 print('Done!')
@@ -577,6 +590,11 @@ for day in days:
 sch_hourly_data = pd.concat(sch_hourly_corpus, ignore_index=True)
 print('Adding term dates to hourly+school dataframe...')
 sch_hourly_data = add_term(sch_hourly_data)
+
+# Adding hour index
+sch_hourly_data['Hour'] = hour
+sch_hourly_data['Hour'] = sch_hourly_data.Date+" "+sch_hourly_data.Hour+':'+'00'+':'+'00'
+sch_hourly_data = sch_hourly_data.set_index('Hour')
 print('Exporting sch_hourly_data.csv to {}...'.format(export_loc))
 sch_hourly_data.to_csv(export_loc+'/sch_hourly_data.csv')
 print('Done!')
