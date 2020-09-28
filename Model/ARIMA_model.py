@@ -123,4 +123,4 @@ class arima:
         print('MAE:', MAE)
         print('MSE:', MSE)
         print('RMSE:', RMSE)
-        return MAE, MSE, RMSE, compare.round(0)
+
