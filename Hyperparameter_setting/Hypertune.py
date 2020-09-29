@@ -1,15 +1,3 @@
-'''
-Hourly hypertune has...
-1. Single step ARIMA
-    - Find the best p,d,q
-2. Single step ANN
-    - Tune number of epoch
-    - Tune number of neuron
-3. Single step LSTM
-    - Tune number of epoch
-    - Tune number of neuron
-'''
-
 import pandas as pd
 import numpy as np
 from sklearn import metrics
@@ -24,7 +12,10 @@ from keras.optimizers import Adam
 from keras.layers import LSTM
 import warnings
 warnings.filterwarnings("ignore")  # Don't want to see the warnings in the notebook
-่
+
+'''
+Hyperparameter tuning for ARIMA
+'''
 # evaluate an ARIMA model for a given order (p,d,q)
 def evaluate_arima_model(X, arima_order):
     # prepare training dataset
@@ -45,6 +36,7 @@ def evaluate_arima_model(X, arima_order):
 
 # evaluate combinations of p, d and q values for an ARIMA model
 def evaluate_models(dataset, p_values, d_values, q_values):
+    mse_report = [] 
     dataset = dataset.astype('float32')
     best_score, best_cfg = float("inf"), None
     for p in p_values:
@@ -55,12 +47,17 @@ def evaluate_models(dataset, p_values, d_values, q_values):
                     mse = evaluate_arima_model(dataset, order)
                     if mse < best_score:
                         best_score, best_cfg = mse, order
-                    print('ARIMA%s MSE=%.3f' % (order,mse))
+                    mse_report.append('ARIMA%s MSE=%.3f' % (order,mse))
+                    # print('ARIMA%s MSE=%.3f' % (order,mse))
                 except:
                     continue
     print('Best ARIMA%s MSE=%.3f' % (best_cfg, best_score))
+    return best_cfg,best_score,mse_report
 
 
+'''
+Hyperparameter tuning for ANN and LSTM
+'''
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
     X, y = list(), list()
@@ -165,36 +162,52 @@ def ann_hypertune(X, step_in, model, epoch, neuron, init='he_uniform'):
         return MAE, MSE, RMSE
 
 def tune_nn(df,mod):
-    result_nn = []
+    result_en = []
     for e in [50,100,200,300]:
         for n in [50,100,200]:
             error=[]
             mae,mse,rmse = ann_hypertune(df[['IN']],step_in=1,model=mod,epoch=e,neuron=n)
             error=[e,n,1,mae,mse,rmse]
-            print(error)
-            result_nn.append(error)
+            # print(error)
+            result_en.append(error)
 
-    return result_nn
+    # Select best epoch and neuron
+    best_e, best_n = 50, 50
+    mse, rmse = float("inf"),float("inf")
+    for i in result_en:   
+        if i[4]<mse and i[5]<rmse:
+            mse, rmse = i[4], i[5]
+            best_e, best_n = i[0], i[1]
 
-def visual_highlight(df):
+    # Tuning initializer
+    result_init = init_tune(df, best_e, best_n, 1, mod)
+    mse2, rmse2 = float("inf"),float("inf")
+    for j in result_init:
+        if j[2]<mse2 and j[3]<rmse2:
+            mse2, rmse2 = j[2], j[3]
+            best_init = j[0]
+
+    return best_init, best_e, best_n, result_en, result_init
+
+def visual_en(df):
     df = pd.DataFrame(df, columns=['Epoch','Neuron','n_step','MAE','MSE','RMSE'])
-    return df.style.highlight_min(color = 'darkblue')
+    return df.style.highlight_min(color = 'yellow')
 
 def init_tune(df,e,n,s,mod):
     init_mode = ['uniform', 'lecun_uniform', 'normal', 'zero',
               'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
 
-    result_ann = []
+    result_nn = []
     for i in init_mode:
         error=[]
         mae,mse,rmse = ann_hypertune(df[['IN']],step_in=s,model=mod,epoch=e,neuron=n,init=i)
         error=[i,mae,mse,rmse]
         print(error)
-        result_ann.append(error)
+        result_nn.append(error)
 
-    return result_ann
+    return result_nn
 
-def final_vis(alist):
+def visual_init(alist):
     cols=['Initializer','MAE','MSE','RMSE']
     df = pd.DataFrame(alist, columns=cols)
-    return df.style.highlight_min(color = 'darkblue')
+    return df.style.highlight_min(color = 'green')
