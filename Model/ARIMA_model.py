@@ -9,6 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 import matplotlib
 from pylab import rcParams
+
 plt.style.use('fivethirtyeight')
 matplotlib.rcParams['axes.labelsize'] = 14
 matplotlib.rcParams['xtick.labelsize'] = 12
@@ -16,8 +17,38 @@ matplotlib.rcParams['ytick.labelsize'] = 12
 matplotlib.rcParams['text.color'] = 'k'
 warnings.filterwarnings("ignore")
 
+'''
+Single-step ARIMA
+'''
+# Please change the file location before running this code.
+arima_best = "C:/Users/Prin/Desktop/dissertation/Datashare/arima_best.csv"
 
-def arima_o(train_hist, period, group, pmd):
+
+def arima_o(hist_data, termdate, col):
+    checker = True
+    try:
+        arima_order = pd.read_csv(arima_best)
+    except:
+        checker = False
+        print('Error: File "arima_best.csv" cannot be found.')
+        print('Please check the file location.')
+
+    if checker == False:
+        print('Stop predicting.')
+        return [], 0, 0, 0
+
+    else:
+        # Retrieve arima order
+        orders = arima_order.loc[arima_order['Term Date'] == termdate, ['ARIMA(p,d,q)']].values
+        order_temp = orders[0][0]
+        order = (int(order_temp[1]), int(order_temp[4]), int(order_temp[7]))
+
+        # Predict!!
+        predictions, MAE, MSE, RMSE = arima_model(hist_data, termdate, col, order)
+        return predictions, MAE, MSE, RMSE
+
+
+def arima_model(train_hist, period, group, pmd):
     train_set = train_hist[train_hist.Term_dates == period]
     train_set = train_set[[group]]
 
@@ -56,6 +87,11 @@ def arima_o(train_hist, period, group, pmd):
     plt.show()
 
     return predictions, MAE, MSE, RMSE
+
+
+'''
+Multi-step ARIMA (SARIMA)
+'''
 
 
 class arima:
