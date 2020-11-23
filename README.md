@@ -30,10 +30,10 @@ weather data is scraped from: https://www.wunderground.com/history/daily/gb/gatw
 which presents and record both daily and hourly weather condition between Gatwick airport and Brighton area.
 It has ten features consists of Datetime, Temperature, Dew Point, Humidity, Wind, Wind Speed, Wind Gust, Pressure, 
 Precip. and Condition.
-<br/><br/>Houly weather condition
-![image](https://user-images.githubusercontent.com/66419715/100001067-22dbce00-2df5-11eb-867f-14e5c3f261bf.png)
-<br/><br/>Daily weather condition
-![image](https://user-images.githubusercontent.com/66419715/100001210-60405b80-2df5-11eb-847f-1eb9069652c1.png)
+Houly weather condition
+<br/><br/>![image](https://user-images.githubusercontent.com/66419715/100001067-22dbce00-2df5-11eb-867f-14e5c3f261bf.png)
+Daily weather condition
+<br/><br/>![image](https://user-images.githubusercontent.com/66419715/100001210-60405b80-2df5-11eb-847f-1eb9069652c1.png)
 
 * Term dates information
 Term dates information is the period of activities, events and assessment of the University of Sussex. Such information 
